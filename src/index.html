@@ -11,17 +11,17 @@
       <header class="hero">
         <div>
           <p class="eyebrow">Project Calculator</p>
-          <h1>Konfigurátor nacenenia pre všetky typy projektov.</h1>
+          <h1>Konfigurátor nacenenia projektov podľa archetypov.</h1>
           <p class="lead">
-            Nastav si položky v katalógu, pridávaj podstránky alebo hodiny a
-            okamžite vidíš cenu. Všetko si upravíš priamo v prehliadači.
+            Pridaj podstránky, vyber archetypy a kalkulačka vypočíta jednotky,
+            základ aj finálnu cenu. Všetko si vieš upraviť v Config paneli.
           </p>
         </div>
         <div class="card note">
           <h3>Config panel</h3>
           <p>
-            Konfigurátor je uložený v prehliadači (LocalStorage). Dá sa neskôr
-            presunúť do databázy a zdieľať s klientom.
+            Nastav typy projektov, archetypy stránok a multipliere. Dáta sa
+            ukladajú v prehliadači (LocalStorage).
           </p>
         </div>
       </header>
@@ -40,38 +40,46 @@
           <label class="field">
             <span>Typ projektu</span>
             <select id="projectType"></select>
-            <small id="projectTypeDescription"></small>
+            <small id="projectRate"></small>
+          </label>
+          <label class="field">
+            <span>Úpravy / korekcie (±)</span>
+            <input id="adjustments" type="number" step="0.01" value="0" />
           </label>
           <div class="divider"></div>
-          <h3>Modifikátory</h3>
-          <div id="modifiers" class="modifiers"></div>
+          <h3>Multipliere</h3>
+          <div id="multipliers" class="modifiers"></div>
         </div>
 
         <div class="panel">
-          <h2>2. Katalóg položiek</h2>
-          <p class="muted">
-            Všetko sa dá upraviť v Config paneli nižšie.
-          </p>
-          <div class="catalog">
-            <select id="catalogSelect"></select>
-            <button id="addLine" class="primary">Pridať</button>
+          <div class="panel-header">
+            <h2>2. Podstránky</h2>
+            <button id="addPage" class="primary">Pridať stránku</button>
           </div>
-          <div id="lines" class="lines"></div>
+          <div id="pages" class="lines"></div>
         </div>
 
         <div class="panel summary">
           <h2>3. Súhrn ceny</h2>
           <div class="summary-row">
+            <span>Jednotky</span>
+            <strong id="unitsValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Sadzba / jednotka</span>
+            <strong id="rateValue"></strong>
+          </div>
+          <div class="summary-row">
             <span>Základ</span>
             <strong id="baseValue"></strong>
           </div>
           <div class="summary-row">
-            <span>Modifikátory</span>
-            <strong id="modifierValue"></strong>
+            <span>Multipliere</span>
+            <strong id="multiplierValue"></strong>
           </div>
           <div class="summary-row">
-            <span>Multiplier typu</span>
-            <strong id="multiplierValue"></strong>
+            <span>Úpravy</span>
+            <strong id="adjustmentValue"></strong>
           </div>
           <div class="summary-row">
             <span>Subtotal</span>
@@ -85,9 +93,6 @@
             <span>Celkom</span>
             <strong id="totalValue"></strong>
           </div>
-          <div class="hint">
-            Tip: Pri napojení na databázu sa budú projekty ukladať a zdieľať.
-          </div>
         </div>
       </section>
 
@@ -95,78 +100,33 @@
         <div class="panel">
           <div class="panel-header">
             <h2>4. Config panel</h2>
-            <button id="resetCatalog" class="ghost">Reset na default</button>
+            <button id="resetConfig" class="ghost">Reset na default</button>
           </div>
           <p class="muted">
-            Tu si vieš pridávať, upravovať a mazať typy projektov, modifikátory a
-            položky katalógu. Zmeny sa hneď premietnu do kalkulátora.
+            Tu si vieš pridávať, upravovať a mazať typy projektov, archetypy a
+            multipliere. Zmeny sa hneď prejavia v kalkulátore.
           </p>
 
-          <h3>Typy projektov</h3>
+          <h3>Typy projektov (sadzba €/jednotka)</h3>
           <div class="config-actions">
             <input id="newProjectTypeName" type="text" placeholder="Nový typ" />
             <button id="addProjectType" class="primary">Pridať</button>
           </div>
           <div id="configProjectTypes" class="config-list"></div>
 
-          <h3>Modifikátory</h3>
+          <h3>Archetypy stránok (koeficient)</h3>
           <div class="config-actions">
-            <input id="newModifierLabel" type="text" placeholder="Nový modifikátor" />
-            <button id="addModifier" class="primary">Pridať</button>
+            <input id="newArchetypeName" type="text" placeholder="Nový archetyp" />
+            <button id="addArchetype" class="primary">Pridať</button>
           </div>
-          <div id="configModifiers" class="config-list"></div>
+          <div id="configArchetypes" class="config-list"></div>
 
-          <h3>Katalóg položiek</h3>
+          <h3>Multipliere</h3>
           <div class="config-actions">
-            <input id="newItemLabel" type="text" placeholder="Nová položka" />
-            <button id="addItem" class="primary">Pridať</button>
+            <input id="newMultiplierName" type="text" placeholder="Nový multiplier" />
+            <button id="addMultiplier" class="primary">Pridať</button>
           </div>
-          <div id="configItems" class="config-list"></div>
-        </div>
-
-        <div class="panel">
-          <h2>Editor ceny položky</h2>
-          <p class="muted">
-            Zadaj cenový model. Pre tiered/volume používaš JSON pole.
-          </p>
-          <div id="itemEditor" class="item-editor" data-editing-id="">
-            <label class="field">
-              <span>Názov</span>
-              <input id="itemName" type="text" />
-            </label>
-            <label class="field">
-              <span>Kategória</span>
-              <input id="itemCategory" type="text" />
-            </label>
-            <label class="field">
-              <span>Jednotka</span>
-              <input id="itemUnit" type="text" />
-            </label>
-            <label class="field">
-              <span>Pricing mód</span>
-              <select id="pricingMode">
-                <option value="unit">Unit (cena za jednotku)</option>
-                <option value="tiered_total">Tiered total (fixné balíky)</option>
-                <option value="volume_price">Volume price (zľava za množstvo)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Hodnota (len pre unit)</span>
-              <input id="pricingValue" type="number" step="0.01" />
-            </label>
-            <label class="field">
-              <span>Tier JSON</span>
-              <textarea id="pricingTiers" rows="4">[]</textarea>
-            </label>
-            <label class="field">
-              <span>Overage (tiered total)</span>
-              <input id="pricingOverage" type="number" step="0.01" />
-            </label>
-            <button id="saveItemEditor" class="primary">Uložiť cenu</button>
-          </div>
-          <div class="hint">
-            Príklady: Tiered total = [{"upTo":1,"total":120},{"upTo":2,"total":200}] · Volume = [{"min":1,"pricePerUnit":60},{"min":5,"pricePerUnit":52}]
-          </div>
+          <div id="configMultipliers" class="config-list"></div>
         </div>
       </section>
     </main>

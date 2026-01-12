@@ -1,8 +1,8 @@
 # project-calculator
 
-Prototyp konfigurátora nacenenia projektov. UI obsahuje kalkulačku aj
-konfiguračný panel, kde si vieš priamo v prehliadači pridávať, upravovať a
-mazať typy projektov, modifikátory aj položky katalógu.
+Konfigurátor nacenenia projektov podľa archetypov stránok. UI obsahuje
+kalkulačku aj konfiguračný panel, kde si vieš priamo v prehliadači pridávať,
+upravovať a mazať typy projektov, archetypy a multipliere.
 
 ## Spustenie
 
@@ -10,9 +10,10 @@ Stačí otvoriť `src/index.html` v prehliadači.
 
 ## Čo je pripravené
 
-- Konfigurovateľný katalóg položiek a typov projektov (`src/config.js`).
-- Kalkulačný engine so škálovateľnými cenovými módmi (unit, tiered, volume).
-- Moderný UI layout s Config panelom, ktorý ukladá dáta do LocalStorage.
+- Typy projektov so sadzbou €/jednotka (podľa Google sheet logiky).
+- Archetypy stránok s koeficientmi + možnosť override v projekte.
+- Multipliere (mobil, wireframe, DPH) a ručné úpravy ceny.
+- Config panel s uložením do LocalStorage.
 
 ## Ďalšie kroky
 

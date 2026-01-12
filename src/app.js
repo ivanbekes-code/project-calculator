@@ -1,146 +1,126 @@
-import { defaultCatalog, projectTemplate } from "./config.js";
+import { defaultConfig, projectTemplate } from "./config.js";
 
 const STORAGE_KEY = "project-calculator-config";
 
 const state = {
-  catalog: null,
+  config: null,
   project: JSON.parse(JSON.stringify(projectTemplate)),
 };
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-const loadCatalog = () => {
+const loadConfig = () => {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCatalog));
-    return clone(defaultCatalog);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultConfig));
+    return clone(defaultConfig);
   }
   try {
     return JSON.parse(raw);
   } catch (error) {
-    console.warn("Invalid catalog in storage, resetting.", error);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCatalog));
-    return clone(defaultCatalog);
+    console.warn("Invalid config in storage, resetting.", error);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultConfig));
+    return clone(defaultConfig);
   }
 };
 
-const saveCatalog = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.catalog));
+const saveConfig = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.config));
 };
 
-const resetCatalog = () => {
-  state.catalog = clone(defaultCatalog);
-  saveCatalog();
-  if (!state.catalog.projectTypes.find((type) => type.id === state.project.projectTypeId)) {
-    state.project.projectTypeId = state.catalog.projectTypes[0]?.id ?? "";
+const resetConfig = () => {
+  state.config = clone(defaultConfig);
+  saveConfig();
+  if (!state.config.projectTypes.find((type) => type.id === state.project.projectTypeId)) {
+    state.project.projectTypeId = state.config.projectTypes[0]?.id ?? "";
   }
   renderAll();
 };
 
 const currency = (value) =>
-  `${value.toFixed(2).replace(".", ",")} ${state.catalog.currency}`;
+  `${value.toFixed(2).replace(".", ",")} ${state.config.currency}`;
 
 const formatPercent = (value) => `${Math.round(value * 100)} %`;
 
-const getItemById = (id) => state.catalog.items.find((item) => item.id === id);
-
 const getProjectType = () =>
-  state.catalog.projectTypes.find(
+  state.config.projectTypes.find(
     (type) => type.id === state.project.projectTypeId,
   );
 
-const calculateLineTotal = (line) => {
-  const item = getItemById(line.itemId);
-  if (!item) return 0;
+const getArchetype = (id) =>
+  state.config.archetypes.find((archetype) => archetype.id === id);
 
-  const qty = Number(line.qty) || 0;
-
-  if (item.pricing.mode === "unit") {
-    return qty * item.pricing.pricePerUnit;
-  }
-
-  if (item.pricing.mode === "tiered_total") {
-    const tier = item.pricing.tiers.find((t) => qty <= t.upTo);
-    if (tier) {
-      return tier.total;
-    }
-    const lastTier = item.pricing.tiers[item.pricing.tiers.length - 1];
-    const overageQty = qty - lastTier.upTo;
-    return lastTier.total + overageQty * item.pricing.overage.pricePerUnit;
-  }
-
-  if (item.pricing.mode === "volume_price") {
-    const sorted = [...item.pricing.tiers].sort((a, b) => a.min - b.min);
-    const tier = [...sorted].reverse().find((t) => qty >= t.min) || sorted[0];
-    return qty * tier.pricePerUnit;
-  }
-
-  return 0;
-};
+const calculateUnits = () =>
+  state.project.pages.reduce((sum, page) => {
+    const archetype = getArchetype(page.archetypeId);
+    const coeff =
+      Number(page.coefficientOverride) || archetype?.coefficient || 0;
+    return sum + coeff * (Number(page.qty) || 0);
+  }, 0);
 
 const calculateSummary = () => {
-  const base = state.project.lines.reduce(
-    (sum, line) => sum + calculateLineTotal(line),
-    0,
-  );
+  const units = calculateUnits();
+  const projectType = getProjectType();
+  const baseRate = projectType?.ratePerUnit ?? 0;
+  const base = units * baseRate;
 
-  const baseMultiplier = getProjectType()?.baseMultiplier ?? 1;
-  const modifierSubtotal = state.project.modifiers
-    .map((id) => state.catalog.modifiers.find((mod) => mod.id === id))
+  const multiplierSubtotal = state.project.multipliers
+    .map((id) => state.config.multipliers.find((item) => item.id === id))
     .filter(Boolean)
-    .reduce((sum, mod) => {
-      if (mod.appliesToTotal) return sum;
-      return sum + base * mod.value;
+    .reduce((sum, multiplier) => {
+      if (multiplier.appliesToTotal) return sum;
+      return sum + base * multiplier.value;
     }, 0);
 
-  const totalBeforeVat = (base + modifierSubtotal) * baseMultiplier;
-  const vatModifier = state.catalog.modifiers.find((mod) => mod.id === "vat");
-  const includesVat = state.project.modifiers.includes("vat");
-  const vatValue = includesVat ? totalBeforeVat * (vatModifier?.value ?? 0) : 0;
+  const subtotal = base + multiplierSubtotal + Number(state.project.adjustments || 0);
+  const vatMultiplier = state.config.multipliers.find((item) => item.id === "vat");
+  const includesVat = state.project.multipliers.includes("vat");
+  const vatValue = includesVat ? subtotal * (vatMultiplier?.value ?? 0) : 0;
 
   return {
+    units,
+    baseRate,
     base,
-    baseMultiplier,
-    modifierSubtotal,
-    totalBeforeVat,
+    multiplierSubtotal,
+    adjustments: Number(state.project.adjustments || 0),
+    subtotal,
     vatValue,
-    total: totalBeforeVat + vatValue,
+    total: subtotal + vatValue,
   };
 };
 
-const renderProjectType = () => {
+const renderProjectTypes = () => {
   const select = document.querySelector("#projectType");
-  select.innerHTML = state.catalog.projectTypes
-    .map(
-      (type) =>
-        `<option value="${type.id}">${type.name} (x${type.baseMultiplier})</option>`,
-    )
+  select.innerHTML = state.config.projectTypes
+    .map((type) => `<option value="${type.id}">${type.name}</option>`)
     .join("");
 
-  if (!select.value || !state.catalog.projectTypes.find((type) => type.id === select.value)) {
-    state.project.projectTypeId = state.catalog.projectTypes[0]?.id ?? "";
+  if (!select.value || !state.config.projectTypes.find((type) => type.id === select.value)) {
+    state.project.projectTypeId = state.config.projectTypes[0]?.id ?? "";
   }
   select.value = state.project.projectTypeId;
 
-  const description = document.querySelector("#projectTypeDescription");
+  const rate = document.querySelector("#projectRate");
   const activeType = getProjectType();
-  description.textContent = activeType?.description ?? "";
+  rate.textContent = activeType
+    ? `${currency(activeType.ratePerUnit)} / jednotka`
+    : "";
 };
 
-const renderModifiers = () => {
-  const container = document.querySelector("#modifiers");
-  container.innerHTML = state.catalog.modifiers
-    .map((mod) => {
-      const checked = state.project.modifiers.includes(mod.id) ? "checked" : "";
-      const value = mod.appliesToTotal
-        ? "(výstup)"
-        : formatPercent(mod.value);
+const renderMultipliers = () => {
+  const container = document.querySelector("#multipliers");
+  container.innerHTML = state.config.multipliers
+    .map((multiplier) => {
+      const checked = state.project.multipliers.includes(multiplier.id)
+        ? "checked"
+        : "";
+      const label = multiplier.appliesToTotal ? "(na výstup)" : formatPercent(multiplier.value);
       return `
         <label class="modifier">
-          <input type="checkbox" data-id="${mod.id}" ${checked} />
+          <input type="checkbox" data-id="${multiplier.id}" ${checked} />
           <span>
-            <strong>${mod.label}</strong>
-            <small>${value} · ${mod.description}</small>
+            <strong>${multiplier.name}</strong>
+            <small>${label}</small>
           </span>
         </label>
       `;
@@ -151,10 +131,10 @@ const renderModifiers = () => {
     input.addEventListener("change", (event) => {
       const id = event.target.dataset.id;
       if (event.target.checked) {
-        state.project.modifiers.push(id);
+        state.project.multipliers.push(id);
       } else {
-        state.project.modifiers = state.project.modifiers.filter(
-          (modId) => modId !== id,
+        state.project.multipliers = state.project.multipliers.filter(
+          (itemId) => itemId !== id,
         );
       }
       renderSummary();
@@ -162,68 +142,90 @@ const renderModifiers = () => {
   });
 };
 
-const renderCatalog = () => {
-  const select = document.querySelector("#catalogSelect");
-  select.innerHTML = state.catalog.items
-    .map(
-      (item) =>
-        `<option value="${item.id}">${item.label} · ${item.category}</option>`,
-    )
-    .join("");
-  select.disabled = state.catalog.items.length === 0;
-  document.querySelector("#addLine").disabled = state.catalog.items.length === 0;
-};
-
-const renderLines = () => {
-  const container = document.querySelector("#lines");
-
-  if (state.project.lines.length === 0) {
+const renderPages = () => {
+  const container = document.querySelector("#pages");
+  if (state.project.pages.length === 0) {
     container.innerHTML = `
       <div class="empty">
-        <p>Zatiaľ nemáš pridané žiadne položky.</p>
-        <p>Vyber položku z katalógu a pridaj ju do projektu.</p>
+        <p>Zatiaľ nemáš pridané žiadne podstránky.</p>
+        <p>Pridaj prvú stránku a vyber archetyp.</p>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = state.project.lines
-    .map((line, index) => {
-      const item = getItemById(line.itemId);
-      const unit = item?.unitLabel ?? "";
-      const lineTotal = calculateLineTotal(line);
+  const archetypeOptions = state.config.archetypes
+    .map((archetype) => `<option value="${archetype.id}">${archetype.name}</option>`)
+    .join("");
 
+  container.innerHTML = state.project.pages
+    .map((page, index) => {
+      const archetype = getArchetype(page.archetypeId);
+      const coeff =
+        Number(page.coefficientOverride) || archetype?.coefficient || 0;
       return `
         <div class="line-item">
           <div>
-            <strong>${item?.label ?? ""}</strong>
-            <small>${item?.category ?? ""}</small>
+            <input class="inline" type="text" value="${page.name}" data-page-name="${index}" placeholder="Názov" />
+            <small>${archetype?.note ?? ""}</small>
           </div>
           <div class="line-controls">
-            <input type="number" min="1" value="${line.qty}" data-index="${index}" />
-            <span>${unit}</span>
+            <select data-page-archetype="${index}">${archetypeOptions}</select>
           </div>
-          <div class="line-total">${currency(lineTotal)}</div>
-          <button class="ghost" data-remove="${index}">Odstrániť</button>
+          <div class="line-controls">
+            <input type="number" min="1" value="${page.qty}" data-page-qty="${index}" />
+            <span>ks</span>
+          </div>
+          <div class="line-controls">
+            <input type="number" step="0.01" value="${page.coefficientOverride ?? ""}" data-page-coeff="${index}" placeholder="auto" />
+            <span>x${coeff.toFixed(2)}</span>
+          </div>
+          <button class="ghost" data-remove-page="${index}">Odstrániť</button>
         </div>
       `;
     })
     .join("");
 
-  container.querySelectorAll("input[type='number']").forEach((input) => {
+  container.querySelectorAll("select[data-page-archetype]").forEach((select) => {
+    select.addEventListener("change", (event) => {
+      const index = Number(event.target.dataset.pageArchetype);
+      state.project.pages[index].archetypeId = event.target.value;
+      renderPages();
+      renderSummary();
+    });
+    select.value = state.project.pages[Number(select.dataset.pageArchetype)].archetypeId;
+  });
+
+  container.querySelectorAll("input[data-page-name]").forEach((input) => {
     input.addEventListener("input", (event) => {
-      const index = Number(event.target.dataset.index);
-      state.project.lines[index].qty = Number(event.target.value);
-      renderLines();
+      const index = Number(event.target.dataset.pageName);
+      state.project.pages[index].name = event.target.value;
+    });
+  });
+
+  container.querySelectorAll("input[data-page-qty]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const index = Number(event.target.dataset.pageQty);
+      state.project.pages[index].qty = Number(event.target.value);
       renderSummary();
     });
   });
 
-  container.querySelectorAll("button[data-remove]").forEach((button) => {
+  container.querySelectorAll("input[data-page-coeff]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const index = Number(event.target.dataset.pageCoeff);
+      const value = event.target.value;
+      state.project.pages[index].coefficientOverride = value === "" ? null : Number(value);
+      renderSummary();
+      renderPages();
+    });
+  });
+
+  container.querySelectorAll("button[data-remove-page]").forEach((button) => {
     button.addEventListener("click", (event) => {
-      const index = Number(event.target.dataset.remove);
-      state.project.lines.splice(index, 1);
-      renderLines();
+      const index = Number(event.target.dataset.removePage);
+      state.project.pages.splice(index, 1);
+      renderPages();
       renderSummary();
     });
   });
@@ -231,27 +233,28 @@ const renderLines = () => {
 
 const renderSummary = () => {
   const summary = calculateSummary();
+  document.querySelector("#unitsValue").textContent = summary.units.toFixed(2);
+  document.querySelector("#rateValue").textContent = currency(summary.baseRate);
   document.querySelector("#baseValue").textContent = currency(summary.base);
-  document.querySelector("#modifierValue").textContent = currency(
-    summary.modifierSubtotal,
+  document.querySelector("#multiplierValue").textContent = currency(
+    summary.multiplierSubtotal,
   );
-  document.querySelector("#multiplierValue").textContent = `x${summary.baseMultiplier}`;
-  document.querySelector("#subtotalValue").textContent = currency(
-    summary.totalBeforeVat,
+  document.querySelector("#adjustmentValue").textContent = currency(
+    summary.adjustments,
   );
+  document.querySelector("#subtotalValue").textContent = currency(summary.subtotal);
   document.querySelector("#vatValue").textContent = currency(summary.vatValue);
   document.querySelector("#totalValue").textContent = currency(summary.total);
 };
 
 const renderConfigProjectTypes = () => {
   const container = document.querySelector("#configProjectTypes");
-  container.innerHTML = state.catalog.projectTypes
+  container.innerHTML = state.config.projectTypes
     .map((type) => {
       return `
         <div class="config-row">
           <input type="text" data-field="name" data-id="${type.id}" value="${type.name}" placeholder="Názov" />
-          <input type="number" step="0.01" data-field="baseMultiplier" data-id="${type.id}" value="${type.baseMultiplier}" />
-          <input type="text" data-field="description" data-id="${type.id}" value="${type.description}" placeholder="Poznámka" />
+          <input type="number" step="0.01" data-field="ratePerUnit" data-id="${type.id}" value="${type.ratePerUnit}" />
           <button class="ghost" data-remove-project-type="${type.id}">Zmazať</button>
         </div>
       `;
@@ -262,11 +265,11 @@ const renderConfigProjectTypes = () => {
     input.addEventListener("input", (event) => {
       const id = event.target.dataset.id;
       const field = event.target.dataset.field;
-      const type = state.catalog.projectTypes.find((item) => item.id === id);
+      const type = state.config.projectTypes.find((item) => item.id === id);
       if (!type) return;
-      type[field] = field === "baseMultiplier" ? Number(event.target.value) : event.target.value;
-      saveCatalog();
-      renderProjectType();
+      type[field] = Number(event.target.value) || event.target.value;
+      saveConfig();
+      renderProjectTypes();
       renderSummary();
     });
   });
@@ -274,29 +277,75 @@ const renderConfigProjectTypes = () => {
   container.querySelectorAll("button[data-remove-project-type]").forEach((button) => {
     button.addEventListener("click", (event) => {
       const id = event.target.dataset.removeProjectType;
-      state.catalog.projectTypes = state.catalog.projectTypes.filter((type) => type.id !== id);
-      saveCatalog();
-      renderProjectType();
+      state.config.projectTypes = state.config.projectTypes.filter(
+        (type) => type.id !== id,
+      );
+      saveConfig();
+      renderProjectTypes();
       renderConfigProjectTypes();
       renderSummary();
     });
   });
 };
 
-const renderConfigModifiers = () => {
-  const container = document.querySelector("#configModifiers");
-  container.innerHTML = state.catalog.modifiers
-    .map((mod) => {
+const renderConfigArchetypes = () => {
+  const container = document.querySelector("#configArchetypes");
+  container.innerHTML = state.config.archetypes
+    .map((archetype) => {
       return `
         <div class="config-row">
-          <input type="text" data-field="label" data-id="${mod.id}" value="${mod.label}" placeholder="Názov" />
-          <input type="number" step="0.01" data-field="value" data-id="${mod.id}" value="${mod.value}" />
-          <input type="text" data-field="description" data-id="${mod.id}" value="${mod.description}" placeholder="Poznámka" />
+          <input type="text" data-field="name" data-id="${archetype.id}" value="${archetype.name}" placeholder="Názov" />
+          <input type="number" step="0.01" data-field="coefficient" data-id="${archetype.id}" value="${archetype.coefficient}" />
+          <input type="text" data-field="note" data-id="${archetype.id}" value="${archetype.note}" placeholder="Poznámka" />
+          <button class="ghost" data-remove-archetype="${archetype.id}">Zmazať</button>
+        </div>
+      `;
+    })
+    .join("");
+
+  container.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const id = event.target.dataset.id;
+      const field = event.target.dataset.field;
+      const archetype = state.config.archetypes.find((item) => item.id === id);
+      if (!archetype) return;
+      archetype[field] = field === "coefficient" ? Number(event.target.value) : event.target.value;
+      saveConfig();
+      renderPages();
+      renderSummary();
+    });
+  });
+
+  container.querySelectorAll("button[data-remove-archetype]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const id = event.target.dataset.removeArchetype;
+      state.config.archetypes = state.config.archetypes.filter(
+        (item) => item.id !== id,
+      );
+      saveConfig();
+      state.project.pages = state.project.pages.filter(
+        (page) => page.archetypeId !== id,
+      );
+      renderConfigArchetypes();
+      renderPages();
+      renderSummary();
+    });
+  });
+};
+
+const renderConfigMultipliers = () => {
+  const container = document.querySelector("#configMultipliers");
+  container.innerHTML = state.config.multipliers
+    .map((multiplier) => {
+      return `
+        <div class="config-row">
+          <input type="text" data-field="name" data-id="${multiplier.id}" value="${multiplier.name}" placeholder="Názov" />
+          <input type="number" step="0.01" data-field="value" data-id="${multiplier.id}" value="${multiplier.value}" />
           <label class="toggle">
-            <input type="checkbox" data-field="appliesToTotal" data-id="${mod.id}" ${mod.appliesToTotal ? "checked" : ""} />
+            <input type="checkbox" data-field="appliesToTotal" data-id="${multiplier.id}" ${multiplier.appliesToTotal ? "checked" : ""} />
             <span>Na výstup</span>
           </label>
-          <button class="ghost" data-remove-modifier="${mod.id}">Zmazať</button>
+          <button class="ghost" data-remove-multiplier="${multiplier.id}">Zmazať</button>
         </div>
       `;
     })
@@ -306,11 +355,11 @@ const renderConfigModifiers = () => {
     input.addEventListener("input", (event) => {
       const id = event.target.dataset.id;
       const field = event.target.dataset.field;
-      const mod = state.catalog.modifiers.find((item) => item.id === id);
-      if (!mod) return;
-      mod[field] = field === "value" ? Number(event.target.value) : event.target.value;
-      saveCatalog();
-      renderModifiers();
+      const multiplier = state.config.multipliers.find((item) => item.id === id);
+      if (!multiplier) return;
+      multiplier[field] = field === "value" ? Number(event.target.value) : event.target.value;
+      saveConfig();
+      renderMultipliers();
       renderSummary();
     });
   });
@@ -318,102 +367,26 @@ const renderConfigModifiers = () => {
   container.querySelectorAll("input[type='checkbox']").forEach((input) => {
     input.addEventListener("change", (event) => {
       const id = event.target.dataset.id;
-      const mod = state.catalog.modifiers.find((item) => item.id === id);
-      if (!mod) return;
-      mod.appliesToTotal = event.target.checked;
-      saveCatalog();
-      renderModifiers();
+      const multiplier = state.config.multipliers.find((item) => item.id === id);
+      if (!multiplier) return;
+      multiplier.appliesToTotal = event.target.checked;
+      saveConfig();
+      renderMultipliers();
       renderSummary();
     });
   });
 
-  container.querySelectorAll("button[data-remove-modifier]").forEach((button) => {
+  container.querySelectorAll("button[data-remove-multiplier]").forEach((button) => {
     button.addEventListener("click", (event) => {
-      const id = event.target.dataset.removeModifier;
-      state.catalog.modifiers = state.catalog.modifiers.filter((mod) => mod.id !== id);
-      state.project.modifiers = state.project.modifiers.filter((modId) => modId !== id);
-      saveCatalog();
-      renderModifiers();
-      renderConfigModifiers();
-      renderSummary();
-    });
-  });
-};
-
-const renderConfigItems = () => {
-  const container = document.querySelector("#configItems");
-  container.innerHTML = state.catalog.items
-    .map((item) => {
-      const mode = item.pricing.mode;
-      const pricingDetail =
-        mode === "unit"
-          ? `Za jednotku: ${item.pricing.pricePerUnit}`
-          : mode === "tiered_total"
-            ? `Tiered total: ${item.pricing.tiers.map((tier) => `≤${tier.upTo}=${tier.total}`).join(", ")}`
-            : `Volume: ${item.pricing.tiers.map((tier) => `≥${tier.min}=${tier.pricePerUnit}`).join(", ")}`;
-
-      return `
-        <div class="config-row">
-          <input type="text" data-field="label" data-id="${item.id}" value="${item.label}" placeholder="Názov" />
-          <input type="text" data-field="category" data-id="${item.id}" value="${item.category}" placeholder="Kategória" />
-          <input type="text" data-field="unitLabel" data-id="${item.id}" value="${item.unitLabel}" placeholder="Jednotka" />
-          <span class="config-meta">${pricingDetail}</span>
-          <button class="ghost" data-edit-item="${item.id}">Upraviť cenu</button>
-          <button class="ghost" data-remove-item="${item.id}">Zmazať</button>
-        </div>
-      `;
-    })
-    .join("");
-
-  container.querySelectorAll("input[type='text']").forEach((input) => {
-    input.addEventListener("input", (event) => {
-      const id = event.target.dataset.id;
-      const field = event.target.dataset.field;
-      const item = state.catalog.items.find((entry) => entry.id === id);
-      if (!item) return;
-      item[field] = event.target.value;
-      saveCatalog();
-      renderCatalog();
-      renderLines();
-    });
-  });
-
-  container.querySelectorAll("button[data-remove-item]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      const id = event.target.dataset.removeItem;
-      state.catalog.items = state.catalog.items.filter((item) => item.id !== id);
-      state.project.lines = state.project.lines.filter((line) => line.itemId !== id);
-      saveCatalog();
-      renderCatalog();
-      renderLines();
-      renderConfigItems();
-      renderSummary();
-    });
-  });
-
-  container.querySelectorAll("button[data-edit-item]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      const id = event.target.dataset.editItem;
-      const item = state.catalog.items.find((entry) => entry.id === id);
-      if (!item) return;
-      const panel = document.querySelector("#itemEditor");
-      panel.dataset.editingId = id;
-      panel.querySelector("#itemName").value = item.label;
-      panel.querySelector("#itemCategory").value = item.category;
-      panel.querySelector("#itemUnit").value = item.unitLabel;
-      panel.querySelector("#pricingMode").value = item.pricing.mode;
-      panel.querySelector("#pricingValue").value =
-        item.pricing.mode === "unit"
-          ? item.pricing.pricePerUnit
-          : "";
-      panel.querySelector("#pricingTiers").value = JSON.stringify(
-        item.pricing.mode === "unit" ? [] : item.pricing.tiers,
+      const id = event.target.dataset.removeMultiplier;
+      state.config.multipliers = state.config.multipliers.filter(
+        (item) => item.id !== id,
       );
-      panel.querySelector("#pricingOverage").value =
-        item.pricing.mode === "tiered_total"
-          ? item.pricing.overage.pricePerUnit
-          : "";
-      panel.scrollIntoView({ behavior: "smooth" });
+      state.project.multipliers = state.project.multipliers.filter((item) => item !== id);
+      saveConfig();
+      renderMultipliers();
+      renderConfigMultipliers();
+      renderSummary();
     });
   });
 };
@@ -422,135 +395,82 @@ const addProjectType = () => {
   const name = document.querySelector("#newProjectTypeName").value.trim();
   if (!name) return;
   const id = `project-${Date.now()}`;
-  state.catalog.projectTypes.push({
-    id,
-    name,
-    description: "",
-    baseMultiplier: 1,
-  });
+  state.config.projectTypes.push({ id, name, ratePerUnit: 0 });
   document.querySelector("#newProjectTypeName").value = "";
-  saveCatalog();
-  renderProjectType();
+  saveConfig();
+  renderProjectTypes();
   renderConfigProjectTypes();
 };
 
-const addModifier = () => {
-  const label = document.querySelector("#newModifierLabel").value.trim();
-  if (!label) return;
-  const id = `modifier-${Date.now()}`;
-  state.catalog.modifiers.push({
-    id,
-    label,
-    type: "percent",
-    value: 0,
-    description: "",
-    appliesToTotal: false,
-  });
-  document.querySelector("#newModifierLabel").value = "";
-  saveCatalog();
-  renderModifiers();
-  renderConfigModifiers();
+const addArchetype = () => {
+  const name = document.querySelector("#newArchetypeName").value.trim();
+  if (!name) return;
+  const id = `archetype-${Date.now()}`;
+  state.config.archetypes.push({ id, name, coefficient: 1, note: "" });
+  document.querySelector("#newArchetypeName").value = "";
+  saveConfig();
+  renderConfigArchetypes();
+  renderPages();
 };
 
-const addItem = () => {
-  const label = document.querySelector("#newItemLabel").value.trim();
-  if (!label) return;
-  const id = `item-${Date.now()}`;
-  state.catalog.items.push({
-    id,
-    label,
-    category: "Custom",
-    unitLabel: "ks",
-    pricing: {
-      mode: "unit",
-      pricePerUnit: 0,
-    },
-  });
-  document.querySelector("#newItemLabel").value = "";
-  saveCatalog();
-  renderCatalog();
-  renderConfigItems();
+const addMultiplier = () => {
+  const name = document.querySelector("#newMultiplierName").value.trim();
+  if (!name) return;
+  const id = `multiplier-${Date.now()}`;
+  state.config.multipliers.push({ id, name, value: 0, appliesToTotal: false });
+  document.querySelector("#newMultiplierName").value = "";
+  saveConfig();
+  renderMultipliers();
+  renderConfigMultipliers();
 };
 
-const saveItemEditor = () => {
-  const panel = document.querySelector("#itemEditor");
-  const id = panel.dataset.editingId;
-  const item = state.catalog.items.find((entry) => entry.id === id);
-  if (!item) return;
-
-  item.label = panel.querySelector("#itemName").value.trim() || item.label;
-  item.category = panel.querySelector("#itemCategory").value.trim() || item.category;
-  item.unitLabel = panel.querySelector("#itemUnit").value.trim() || item.unitLabel;
-  const mode = panel.querySelector("#pricingMode").value;
-
-  if (mode === "unit") {
-    item.pricing = {
-      mode,
-      pricePerUnit: Number(panel.querySelector("#pricingValue").value) || 0,
-    };
-  } else if (mode === "tiered_total") {
-    const tiers = JSON.parse(panel.querySelector("#pricingTiers").value || "[]");
-    item.pricing = {
-      mode,
-      tiers,
-      overage: {
-        pricePerUnit: Number(panel.querySelector("#pricingOverage").value) || 0,
-      },
-    };
-  } else if (mode === "volume_price") {
-    const tiers = JSON.parse(panel.querySelector("#pricingTiers").value || "[]");
-    item.pricing = {
-      mode,
-      tiers,
-    };
-  }
-
-  saveCatalog();
-  renderCatalog();
-  renderLines();
-  renderConfigItems();
+const addPage = () => {
+  const defaultArchetype = state.config.archetypes[0]?.id ?? "";
+  state.project.pages.push({
+    name: "Nová stránka",
+    archetypeId: defaultArchetype,
+    qty: 1,
+    coefficientOverride: null,
+  });
+  renderPages();
   renderSummary();
 };
 
 const bindActions = () => {
   document.querySelector("#projectType").addEventListener("change", (event) => {
     state.project.projectTypeId = event.target.value;
-    renderProjectType();
+    renderProjectTypes();
     renderSummary();
   });
 
-  document.querySelector("#addLine").addEventListener("click", () => {
-    const itemId = document.querySelector("#catalogSelect").value;
-    if (!itemId) return;
-    state.project.lines.push({ itemId, qty: 1 });
-    renderLines();
-    renderSummary();
-  });
-
+  document.querySelector("#addPage").addEventListener("click", addPage);
   document.querySelector("#projectName").addEventListener("input", (event) => {
     state.project.name = event.target.value;
   });
 
+  document.querySelector("#adjustments").addEventListener("input", (event) => {
+    state.project.adjustments = Number(event.target.value) || 0;
+    renderSummary();
+  });
+
   document.querySelector("#addProjectType").addEventListener("click", addProjectType);
-  document.querySelector("#addModifier").addEventListener("click", addModifier);
-  document.querySelector("#addItem").addEventListener("click", addItem);
-  document.querySelector("#saveItemEditor").addEventListener("click", saveItemEditor);
-  document.querySelector("#resetCatalog").addEventListener("click", resetCatalog);
+  document.querySelector("#addArchetype").addEventListener("click", addArchetype);
+  document.querySelector("#addMultiplier").addEventListener("click", addMultiplier);
+  document.querySelector("#resetConfig").addEventListener("click", resetConfig);
 };
 
 const renderAll = () => {
-  renderProjectType();
-  renderModifiers();
-  renderCatalog();
-  renderLines();
+  renderProjectTypes();
+  renderMultipliers();
+  renderPages();
   renderSummary();
   renderConfigProjectTypes();
-  renderConfigModifiers();
-  renderConfigItems();
+  renderConfigArchetypes();
+  renderConfigMultipliers();
 };
 
 const bootstrap = () => {
-  state.catalog = loadCatalog();
+  state.config = loadConfig();
   renderAll();
   bindActions();
 };
