@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Calculator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Project Calculator</p>
+          <h1>Konfigurátor nacenenia pre všetky typy projektov.</h1>
+          <p class="lead">
+            Nastav si položky v katalógu, pridávaj podstránky alebo hodiny a
+            okamžite vidíš cenu. Pripravené na rast a zdieľanú databázu.
+          </p>
+        </div>
+        <div class="card note">
+          <h3>Vízia backendu</h3>
+          <p>
+            Tento prototyp počíta s tým, že sa katalóg + projekty budú ukladať
+            v databáze (napr. Supabase). UI je už pripravené na napojenie.
+          </p>
+        </div>
+      </header>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>1. Projekt</h2>
+          <label class="field">
+            <span>Názov projektu</span>
+            <input
+              id="projectName"
+              type="text"
+              placeholder="napr. UX audit - klient X"
+            />
+          </label>
+          <label class="field">
+            <span>Typ projektu</span>
+            <select id="projectType"></select>
+            <small id="projectTypeDescription"></small>
+          </label>
+          <div class="divider"></div>
+          <h3>Modifikátory</h3>
+          <div id="modifiers" class="modifiers"></div>
+        </div>
+
+        <div class="panel">
+          <h2>2. Katalóg položiek</h2>
+          <p class="muted">
+            Toto bude neskôr plne editovateľné v “Config” časti.
+          </p>
+          <div class="catalog">
+            <select id="catalogSelect"></select>
+            <button id="addLine" class="primary">Pridať</button>
+          </div>
+          <div id="lines" class="lines"></div>
+        </div>
+
+        <div class="panel summary">
+          <h2>3. Súhrn ceny</h2>
+          <div class="summary-row">
+            <span>Základ</span>
+            <strong id="baseValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Modifikátory</span>
+            <strong id="modifierValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Multiplier typu</span>
+            <strong id="multiplierValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <strong id="subtotalValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>DPH</span>
+            <strong id="vatValue"></strong>
+          </div>
+          <div class="summary-total">
+            <span>Celkom</span>
+            <strong id="totalValue"></strong>
+          </div>
+          <div class="hint">
+            Tip: V ďalšej fáze sa sem pridá export do PDF a ukladanie do DB.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
