@@ -58,10 +58,15 @@ h1 {
   margin-top: 0;
 }
 
-.grid {
+.grid,
+.config {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
+}
+
+.config {
+  margin-top: 32px;
 }
 
 .panel {
@@ -79,6 +84,13 @@ h1 {
   color: #f8fafc;
 }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -86,7 +98,8 @@ h1 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -152,6 +165,11 @@ h1 {
   padding: 12px 18px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .lines {
@@ -226,9 +244,79 @@ h1 {
   margin-top: 16px;
   padding: 12px;
   border-radius: 12px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.panel.summary .hint {
   background: rgba(248, 250, 252, 0.12);
   color: #cbd5f5;
-  font-size: 0.9rem;
+}
+
+.config-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.config-actions input {
+  flex: 1;
+}
+
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.6fr 1.2fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.config-row input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.config-meta {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.item-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+@media (max-width: 900px) {
+  .config-row {
+    grid-template-columns: 1fr;
+  }
+
+  .config-actions {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 720px) {

@@ -1,4 +1,4 @@
-export const catalog = {
+export const defaultCatalog = {
   currency: "€",
   projectTypes: [
     {
@@ -33,6 +33,7 @@ export const catalog = {
       type: "percent",
       value: 0.2,
       description: "+20 % k základu",
+      appliesToTotal: false,
     },
     {
       id: "wireframe",
@@ -40,6 +41,7 @@ export const catalog = {
       type: "percent",
       value: 0.12,
       description: "+12 % k základu",
+      appliesToTotal: false,
     },
     {
       id: "rush",
@@ -47,6 +49,7 @@ export const catalog = {
       type: "percent",
       value: 0.25,
       description: "+25 % k základu",
+      appliesToTotal: false,
     },
     {
       id: "vat",

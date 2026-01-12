@@ -14,14 +14,14 @@
           <h1>Konfigurátor nacenenia pre všetky typy projektov.</h1>
           <p class="lead">
             Nastav si položky v katalógu, pridávaj podstránky alebo hodiny a
-            okamžite vidíš cenu. Pripravené na rast a zdieľanú databázu.
+            okamžite vidíš cenu. Všetko si upravíš priamo v prehliadači.
           </p>
         </div>
         <div class="card note">
-          <h3>Vízia backendu</h3>
+          <h3>Config panel</h3>
           <p>
-            Tento prototyp počíta s tým, že sa katalóg + projekty budú ukladať
-            v databáze (napr. Supabase). UI je už pripravené na napojenie.
+            Konfigurátor je uložený v prehliadači (LocalStorage). Dá sa neskôr
+            presunúť do databázy a zdieľať s klientom.
           </p>
         </div>
       </header>
@@ -50,7 +50,7 @@
         <div class="panel">
           <h2>2. Katalóg položiek</h2>
           <p class="muted">
-            Toto bude neskôr plne editovateľné v “Config” časti.
+            Všetko sa dá upraviť v Config paneli nižšie.
           </p>
           <div class="catalog">
             <select id="catalogSelect"></select>
@@ -86,7 +86,86 @@
             <strong id="totalValue"></strong>
           </div>
           <div class="hint">
-            Tip: V ďalšej fáze sa sem pridá export do PDF a ukladanie do DB.
+            Tip: Pri napojení na databázu sa budú projekty ukladať a zdieľať.
+          </div>
+        </div>
+      </section>
+
+      <section class="config">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>4. Config panel</h2>
+            <button id="resetCatalog" class="ghost">Reset na default</button>
+          </div>
+          <p class="muted">
+            Tu si vieš pridávať, upravovať a mazať typy projektov, modifikátory a
+            položky katalógu. Zmeny sa hneď premietnu do kalkulátora.
+          </p>
+
+          <h3>Typy projektov</h3>
+          <div class="config-actions">
+            <input id="newProjectTypeName" type="text" placeholder="Nový typ" />
+            <button id="addProjectType" class="primary">Pridať</button>
+          </div>
+          <div id="configProjectTypes" class="config-list"></div>
+
+          <h3>Modifikátory</h3>
+          <div class="config-actions">
+            <input id="newModifierLabel" type="text" placeholder="Nový modifikátor" />
+            <button id="addModifier" class="primary">Pridať</button>
+          </div>
+          <div id="configModifiers" class="config-list"></div>
+
+          <h3>Katalóg položiek</h3>
+          <div class="config-actions">
+            <input id="newItemLabel" type="text" placeholder="Nová položka" />
+            <button id="addItem" class="primary">Pridať</button>
+          </div>
+          <div id="configItems" class="config-list"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Editor ceny položky</h2>
+          <p class="muted">
+            Zadaj cenový model. Pre tiered/volume používaš JSON pole.
+          </p>
+          <div id="itemEditor" class="item-editor" data-editing-id="">
+            <label class="field">
+              <span>Názov</span>
+              <input id="itemName" type="text" />
+            </label>
+            <label class="field">
+              <span>Kategória</span>
+              <input id="itemCategory" type="text" />
+            </label>
+            <label class="field">
+              <span>Jednotka</span>
+              <input id="itemUnit" type="text" />
+            </label>
+            <label class="field">
+              <span>Pricing mód</span>
+              <select id="pricingMode">
+                <option value="unit">Unit (cena za jednotku)</option>
+                <option value="tiered_total">Tiered total (fixné balíky)</option>
+                <option value="volume_price">Volume price (zľava za množstvo)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Hodnota (len pre unit)</span>
+              <input id="pricingValue" type="number" step="0.01" />
+            </label>
+            <label class="field">
+              <span>Tier JSON</span>
+              <textarea id="pricingTiers" rows="4">[]</textarea>
+            </label>
+            <label class="field">
+              <span>Overage (tiered total)</span>
+              <input id="pricingOverage" type="number" step="0.01" />
+            </label>
+            <button id="saveItemEditor" class="primary">Uložiť cenu</button>
+          </div>
+          <div class="hint">
+            Príklady: Tiered total = [{"upTo":1,"total":120},{"upTo":2,"total":200}] · Volume = [{"min":1,"pricePerUnit":60},{"min":5,"pricePerUnit":52}]
           </div>
         </div>
       </section>
