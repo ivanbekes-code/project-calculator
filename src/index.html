@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Calculator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Project Calculator</p>
+          <h1>Konfigurátor nacenenia projektov podľa archetypov.</h1>
+          <p class="lead">
+            Pridaj podstránky, vyber archetypy a kalkulačka vypočíta jednotky,
+            základ aj finálnu cenu. Všetko si vieš upraviť v Config paneli.
+          </p>
+        </div>
+        <div class="card note">
+          <h3>Config panel</h3>
+          <p>
+            Nastav typy projektov, archetypy stránok a multipliere. Dáta sa
+            ukladajú v prehliadači (LocalStorage).
+          </p>
+        </div>
+      </header>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>1. Projekt</h2>
+          <label class="field">
+            <span>Názov projektu</span>
+            <input
+              id="projectName"
+              type="text"
+              placeholder="napr. UX audit - klient X"
+            />
+          </label>
+          <label class="field">
+            <span>Typ projektu</span>
+            <select id="projectType"></select>
+            <small id="projectRate"></small>
+          </label>
+          <label class="field">
+            <span>Úpravy / korekcie (±)</span>
+            <input id="adjustments" type="number" step="0.01" value="0" />
+          </label>
+          <div class="divider"></div>
+          <h3>Multipliere</h3>
+          <div id="multipliers" class="modifiers"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>2. Podstránky</h2>
+            <button id="addPage" class="primary">Pridať stránku</button>
+          </div>
+          <div id="pages" class="lines"></div>
+        </div>
+
+        <div class="panel summary">
+          <h2>3. Súhrn ceny</h2>
+          <div class="summary-row">
+            <span>Jednotky</span>
+            <strong id="unitsValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Sadzba / jednotka</span>
+            <strong id="rateValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Základ</span>
+            <strong id="baseValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Multipliere</span>
+            <strong id="multiplierValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Úpravy</span>
+            <strong id="adjustmentValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <strong id="subtotalValue"></strong>
+          </div>
+          <div class="summary-row">
+            <span>DPH</span>
+            <strong id="vatValue"></strong>
+          </div>
+          <div class="summary-total">
+            <span>Celkom</span>
+            <strong id="totalValue"></strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="config">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>4. Config panel</h2>
+            <button id="resetConfig" class="ghost">Reset na default</button>
+          </div>
+          <p class="muted">
+            Tu si vieš pridávať, upravovať a mazať typy projektov, archetypy a
+            multipliere. Zmeny sa hneď prejavia v kalkulátore.
+          </p>
+
+          <h3>Typy projektov (sadzba €/jednotka)</h3>
+          <div class="config-actions">
+            <input id="newProjectTypeName" type="text" placeholder="Nový typ" />
+            <button id="addProjectType" class="primary">Pridať</button>
+          </div>
+          <div id="configProjectTypes" class="config-list"></div>
+
+          <h3>Archetypy stránok (koeficient)</h3>
+          <div class="config-actions">
+            <input id="newArchetypeName" type="text" placeholder="Nový archetyp" />
+            <button id="addArchetype" class="primary">Pridať</button>
+          </div>
+          <div id="configArchetypes" class="config-list"></div>
+
+          <h3>Multipliere</h3>
+          <div class="config-actions">
+            <input id="newMultiplierName" type="text" placeholder="Nový multiplier" />
+            <button id="addMultiplier" class="primary">Pridať</button>
+          </div>
+          <div id="configMultipliers" class="config-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
